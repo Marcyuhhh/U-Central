@@ -2,8 +2,6 @@
 node_modules/
 .env
 
-# Uploaded user files
-public/uploads/
 
 # System files
 .DS_Store
