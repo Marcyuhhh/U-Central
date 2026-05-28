@@ -38,7 +38,6 @@ pool.connect((err, client, release) => {
 
 // ─────────────────────────────────────────────────────────────
 // MIDDLEWARE
-// These lines run on every single request before your routes.
 // ─────────────────────────────────────────────────────────────
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -46,7 +45,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.json({ limit: '50mb' }));
 
-// Session middleware — only initialized ONCE (your original had it twice)
 app.use(session({
     store: new pgSession({
         pool: pool,
@@ -63,9 +61,7 @@ app.use(session({
 
 // ─────────────────────────────────────────────────────────────
 // FILE UPLOADS
-
 // ─────────────────────────────────────────────────────────────
-
 const uploadDir = path.join(__dirname, 'public/uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
@@ -80,10 +76,20 @@ const upload = multer({ storage });
 // ─────────────────────────────────────────────────────────────
 // AUTH HELPERS
 // ─────────────────────────────────────────────────────────────
+
+// FIX #1: requireLogin now detects API routes and returns JSON 401
+// instead of redirecting — a redirect on a fetch() call causes a
+// silent failure and the toast shows "❌ Error saving post."
 function requireLogin(req, res, next) {
-    if (!req.session.user) return res.redirect('/login');
+    if (!req.session.user) {
+        if (req.path.startsWith('/api/')) {
+            return res.status(401).json({ error: 'Not logged in' });
+        }
+        return res.redirect('/login');
+    }
     next();
 }
+
 function requireFaculty(req, res, next) {
     if (!req.session.user || req.session.user.role !== 'faculty') {
         return res.status(403).json({ error: 'Faculty only' });
@@ -129,7 +135,7 @@ app.get('/offices', requireLogin, async (req, res) => {
         );
         res.render('offices', {
             user: req.session.user,
-            departments: result.rows   // fixed: was "results.rows" (typo bug)
+            departments: result.rows
         });
     } catch (err) {
         console.error('Error fetching departments:', err);
@@ -170,29 +176,20 @@ app.get('/settings', requireLogin, (req, res) => {
 });
 
 app.post('/freedom', requireLogin, async (req, res) => {
-    // Prevent guest users from posting
     if (req.session.user.role === 'guest') {
         return res.status(403).send("Guests cannot post.");
     }
-
     try {
         const { title, flair, body } = req.body;
-
-        // Ensure the post has content
         if (!body || !body.trim()) {
             return res.redirect('/freedom');
         }
-
-        // Insert the new post into the PostgreSQL database
         await pool.query(
             `INSERT INTO posts (user_id, post_type, post_subtype, title, body, flair, created_at)
              VALUES ($1, 'freedom', 'announcement', $2, $3, $4, NOW())`,
             [req.session.user.id, title?.trim() || null, body.trim(), flair || null]
         );
-
-        // Refresh the page so the newly saved post appears
         res.redirect('/freedom');
-
     } catch (err) {
         console.error('Error saving freedom post:', err);
         res.redirect('/freedom');
@@ -265,58 +262,19 @@ app.post('/login', async (req, res) => {
     }
 });
 
-
-// ═══════════════════════════════════════════
-// API ROUTES (For Frontend JavaScript)
-// ═══════════════════════════════════════════
-
-// 1. GET ALL POSTS
-app.get('/api/posts', async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT p.*, u.full_name as author, u.role as author_role 
-            FROM posts p 
-            JOIN users u ON p.user_id = u.id 
-            ORDER BY p.created_at DESC
-        `);
-        res.json(result.rows);
-    } catch (err) {
-        console.error("Fetch posts error:", err);
-        res.status(500).json({ error: 'Database error' });
-    }
-});
-
-// 2. CREATE A NEW POST
-app.post('/api/posts', requireLogin, async (req, res) => {
-    try {
-        const { content, type, target } = req.body;
-        
-        if (!content || !content.trim()) {
-            return res.status(400).json({ error: 'Content is required' });
-        }
-
-        // Insert into database
-        await pool.query(
-            `INSERT INTO posts (user_id, post_type, post_subtype, body, created_at)
-             VALUES ($1, $2, $3, $4, NOW())`,
-            [req.session.user.id, target, type, content.trim()]
-        );
-
-        res.json({ success: true });
-    } catch (err) {
-        console.error("Save post error:", err);
-        res.status(500).json({ error: 'Database error' });
-    }
-});
-
 // =============================================================
 // API — HOME FEED POSTS
+// FIX #2: Removed the two dead duplicate route blocks that were
+// shadowing these. Express only executes the FIRST matching route,
+// so those blocks at lines 274 and 290 in the original file were
+// the only ones that ever ran — but they had the wrong SQL and the
+// wrong field names. These are now the single, canonical handlers.
 // =============================================================
 
-app.get('/api/posts', requireLogin, async (req, res) => {
+app.get('/api/posts', async (req, res) => {
     try {
         const { type } = req.query;
-        const userId = req.session.user.id || 0;
+        const userId = req.session.user?.id || 0;
         const params = [userId];
         let query = `
             SELECT p.id, p.title, p.body, p.post_subtype AS type,
@@ -344,17 +302,26 @@ app.get('/api/posts', requireLogin, async (req, res) => {
     }
 });
 
+// FIX #3: Field name was mismatched. app.js sends { content, type, target }
+// but the old duplicate handler at line 347 expected { body, type } and
+// hardcoded post_type = 'home', ignoring the target field entirely —
+// meaning Freedom Wall posts were always saved as home posts.
+// This single handler now correctly reads `content` and `target`.
 app.post('/api/posts', requireLogin, async (req, res) => {
     if (req.session.user.role === 'guest') {
         return res.status(403).json({ error: 'Guests cannot post' });
     }
     try {
-        const { body, type } = req.body;
-        if (!body?.trim()) return res.status(400).json({ error: 'Post body is required' });
+        const { content, type, target } = req.body;
+        if (!content?.trim()) return res.status(400).json({ error: 'Post content is required' });
+
+        // `target` is 'home' or 'freedom', sent by app.js
+        const postType = (target === 'freedom') ? 'freedom' : 'home';
+
         const result = await pool.query(
             `INSERT INTO posts (user_id, post_type, post_subtype, body, created_at)
-             VALUES ($1, 'home', $2, $3, NOW()) RETURNING id`,
-            [req.session.user.id, type || 'announcement', body.trim()]
+             VALUES ($1, $2, $3, $4, NOW()) RETURNING id`,
+            [req.session.user.id, postType, type || 'announcement', content.trim()]
         );
         res.json({ success: true, id: result.rows[0].id });
     } catch (err) {
@@ -441,7 +408,6 @@ app.post('/api/posts/:id/like', requireLogin, async (req, res) => {
             [userId, postId]
         );
         if (existing.rows.length > 0) {
-            // Already liked — unlike it
             await pool.query(
                 'DELETE FROM post_likes WHERE user_id = $1 AND post_id = $2',
                 [userId, postId]
@@ -452,7 +418,6 @@ app.post('/api/posts/:id/like', requireLogin, async (req, res) => {
             );
             res.json({ liked: false });
         } else {
-            // Not yet liked — like it
             await pool.query(
                 'INSERT INTO post_likes (user_id, post_id) VALUES ($1, $2)',
                 [userId, postId]
@@ -483,7 +448,6 @@ app.get('/api/posts/:id/comments', async (req, res) => {
             ORDER BY c.created_at ASC
         `, [req.params.id]);
 
-        // Build a comment tree (top-level comments + nested replies)
         const map = {};
         const roots = [];
         result.rows.forEach(r => { map[r.id] = { ...r, replies: [] }; });
@@ -575,7 +539,6 @@ app.post('/api/offices/:id/posts', requireLogin, requireFaculty, async (req, res
         const { body, type } = req.body;
         if (!body?.trim()) return res.status(400).json({ error: 'Post body is required' });
 
-        // Verify this faculty is assigned to this office
         const check = await pool.query(
             'SELECT department_id FROM users WHERE id = $1', [req.session.user.id]
         );
@@ -627,7 +590,6 @@ app.get('/api/polls', requireLogin, async (req, res) => {
             LIMIT 10
         `, [userId]);
 
-        // For each poll, also fetch its options
         const result = [];
         for (const poll of polls.rows) {
             const opts = await pool.query(

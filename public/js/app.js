@@ -1,4 +1,3 @@
-
 // ═══════════════════════════════════════════
 // DATA
 // ═══════════════════════════════════════════
@@ -67,32 +66,58 @@ setInterval(() => {
 // ═══════════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════════
-// Fetch posts from PostgreSQL
+
+// FIX #4: loadPostsFromDB now calls two separate endpoints:
+//   GET /api/posts   → returns only post_type = 'home'
+//   GET /api/freedom → returns only post_type = 'freedom'
+// Previously it called /api/posts once and tried to split on
+// p.target === 'freedom', but the original broken GET handler
+// returned all post_types with no 'target' alias, so Freedom
+// Wall posts always came back empty after reload.
 async function loadPostsFromDB() {
     try {
-        const response = await fetch('/api/posts');
-        const dbPosts = await response.json();
-        
-        // Format the database rows to match our frontend UI
-        const formattedPosts = dbPosts.map(p => ({
+        // --- Home feed ---
+        const homeRes = await fetch('/api/posts');
+        if (!homeRes.ok) throw new Error('Failed to load home posts');
+        const homeRows = await homeRes.json();
+
+        homePosts = homeRows.map(p => ({
             id: p.id,
             author: p.author,
-            authorRole: p.author_role.charAt(0).toUpperCase() + p.author_role.slice(1),
-            authorPic: p.author.charAt(0).toUpperCase(),
+            authorRole: p.author_role
+                ? p.author_role.charAt(0).toUpperCase() + p.author_role.slice(1)
+                : 'Student',
+            authorPic: p.author ? p.author.charAt(0).toUpperCase() : '?',
             time: new Date(p.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
             content: p.body,
-            type: p.post_subtype,
+            type: p.type || p.post_subtype,
             likes: p.likes || 0,
-            liked: false, // We will wire up personal likes later
-            comments: [], // We will wire up comments later
-            target: p.post_type
+            liked: p.liked || false,
+            comments: [],
+            target: 'home'
         }));
 
-        // Split them into the correct tabs
-        homePosts = formattedPosts.filter(p => p.target === 'home');
-        freedomPosts = formattedPosts.filter(p => p.target === 'freedom');
-        
-        // Update the screen
+        // --- Freedom wall ---
+        const freedomRes = await fetch('/api/freedom');
+        if (!freedomRes.ok) throw new Error('Failed to load freedom posts');
+        const freedomRows = await freedomRes.json();
+
+        freedomPosts = freedomRows.map(p => ({
+            id: p.id,
+            author: p.author,
+            authorRole: p.author_role
+                ? p.author_role.charAt(0).toUpperCase() + p.author_role.slice(1)
+                : 'Student',
+            authorPic: p.author ? p.author.charAt(0).toUpperCase() : '?',
+            time: new Date(p.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
+            content: p.body,
+            type: p.type || p.post_subtype,
+            likes: p.likes || 0,
+            liked: p.liked || false,
+            comments: [],
+            target: 'freedom'
+        }));
+
         renderHomePosts();
         renderFreedomPosts();
 
@@ -546,7 +571,6 @@ window.submitNewOffice = () => {
   const loc  = document.getElementById('newOfficeLoc').value.trim();
   if (!name) { showToast('⚠️ Enter an office name'); return; }
   officesData[nextOfficeId] = { id:nextOfficeId, name, description:desc||'Campus office.', location:loc||'Main Building', posts:[] };
-  // Update station select
   const ss = document.getElementById('stationSelect');
   if (ss) ss.innerHTML = Object.values(officesData).map(o=>`<option value="${o.id}" ${currentUser.officeId===o.id?'selected':''}>${escapeHtml(o.name)}</option>`).join('');
   nextOfficeId++;
@@ -591,7 +615,6 @@ function showOfficeDetail(id) {
       <button class="btn-primary" onclick="submitOfficePost(${id})" style="margin-top:0.5rem;width:auto;padding:0.6rem 1.4rem;">Post to Office</button>
     </div>` : '';
 
-  // LIVE DIRECTORY — only from registry, no pre-determined data
   const dirHTML = facultyInOffice.length
     ? facultyInOffice.map(f=>{
         const isMe = f.id===currentUser.id;
@@ -704,27 +727,30 @@ function openPostModal(target) {
   document.getElementById('postModal').classList.remove('hidden');
   setTimeout(()=>document.getElementById('postContentInput').focus(),50);
 }
+
+// FIX #5: submitPost now correctly sends { content, type, target }.
+// The field name 'content' matches what server.js POST /api/posts
+// now reads. The 'target' field ('home' or 'freedom') tells the
+// server which post_type to save in the database.
 async function submitPost() {
   const content = document.getElementById('postContentInput').value.trim();
   const type = document.getElementById('postTypeSelect').value;
-  
+
   if (!content) { showToast('⚠️ Write something first!'); return; }
 
-  // Show loading state
   const btn = document.getElementById('submitPostBtn');
   const originalText = btn.innerText;
   btn.innerText = 'Posting...';
   btn.disabled = true;
 
   try {
-    // Send data to our new server API
     const response = await fetch('/api/posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         content: content,
         type: type,
-        target: currentPostTarget // 'home' or 'freedom'
+        target: currentPostTarget  // 'home' or 'freedom'
       })
     });
 
@@ -732,11 +758,15 @@ async function submitPost() {
       showToast('✅ Posted!');
       closeModal('postModal');
       document.getElementById('postContentInput').value = '';
-      
-      // Reload posts from the database to show the new one!
-      await loadPostsFromDB(); 
+      await loadPostsFromDB();
+    } else if (response.status === 401) {
+      // FIX #6: Session expired — show a helpful message instead
+      // of a silent "❌ Error saving post." toast
+      showToast('⚠️ Session expired. Please log in again.');
+      setTimeout(() => window.location.href = '/login', 1800);
     } else {
-      showToast('❌ Error saving post.');
+      const err = await response.json().catch(() => ({}));
+      showToast(`❌ ${err.error || 'Error saving post.'}`);
     }
   } catch (err) {
     console.error(err);
@@ -783,7 +813,6 @@ function guestLogin() {
   currentUser = { id:99, name:'Guest', email:'guest@ucentral.edu', role:'guest', bio:'', password:'guest', officeId:null, profilePic:'G', activityHistory:[] };
   addActivity('Browsing as guest'); showDashboard();
 }
-// Simple in-memory user store (in real app: server-side auth)
 let registeredUsers = [];
 function handleLogin(email, pwd) {
   if (!email||!pwd) { document.getElementById('authError').innerText='Enter your credentials'; return; }
@@ -792,7 +821,7 @@ function handleLogin(email, pwd) {
   currentUser = { ...user, activityHistory: user.activityHistory||[] };
   addActivity('Logged in'); showDashboard();
 }
-const FACULTY_ACCESS_CODE = 'FACULTY2024'; // Admin sets this code
+const FACULTY_ACCESS_CODE = 'FACULTY2024';
 function handleSignup(name, email, pwd, role, terms) {
   if (!name||!email||!pwd) { document.getElementById('authError').innerText='All fields required'; return; }
   if (!terms) { document.getElementById('authError').innerText='You must agree to the Terms'; return; }
@@ -828,7 +857,6 @@ function onAuthSubmit(e) {
   e.preventDefault();
   if (currentMode==='login') handleLogin(document.getElementById('loginEmail')?.value||'', document.getElementById('loginPassword')?.value||'');
   else handleSignup(document.getElementById('signupName')?.value||'', document.getElementById('signupEmail')?.value||'', document.getElementById('signupPassword')?.value||'', document.querySelector('input[name="roleRadio"]:checked')?.value||'student', document.getElementById('termsAgree')?.checked||false);
-  // Note: role is also read directly inside handleSignup for validation
 }
 
 // ═══════════════════════════════════════════
@@ -858,13 +886,10 @@ function updateUserUI() {
   const guest = isGuest();
   document.getElementById('stationMenuItem').style.display = isFac?'flex':'none';
   document.getElementById('stationTab').style.display = isFac?'block':'none';
-  // Hide Add Office button for non-faculty
   const aob = document.getElementById('addOfficeBtn');
   if (aob) aob.style.display = (currentUser.role==='faculty') ? '' : 'none';
-  // Guest mode top banner
   const gmb = document.getElementById('guestModeBanner');
   if (gmb) gmb.style.display = guest ? 'flex' : 'none';
-  // Toggle post boxes vs guest banners
   const hcb = document.getElementById('homeCreateBox');
   const fcb = document.getElementById('freedomCreateBox');
   const ghb = document.getElementById('guestBannerHome');
@@ -873,9 +898,7 @@ function updateUserUI() {
   if (fcb) fcb.style.display = guest ? 'none' : '';
   if (ghb) ghb.style.display = guest ? 'flex' : 'none';
   if (gfb) gfb.style.display = guest ? 'flex' : 'none';
-  // Show guest badge in role badge
   document.getElementById('dashboardRoleBadge').innerText = isFac?'Faculty':guest?'Guest':'Student';
-  // Disable/style settings for guest
   const settingsLinks = document.querySelectorAll('[data-setting]');
   settingsLinks.forEach(l => { if (guest && l.dataset.setting!=='history') { l.style.opacity='0.4'; l.style.pointerEvents='none'; } else { l.style.opacity=''; l.style.pointerEvents=''; } });
 }
@@ -897,7 +920,6 @@ function saveProfile() {
   const email = document.getElementById('profileEmail').value.trim();
   if (!name) { showToast('⚠️ Name cannot be empty'); return; }
   currentUser.name=name; currentUser.email=email||currentUser.email; currentUser.bio=document.getElementById('profileBio').value;
-  // Sync back to registered users store
   const stored = registeredUsers.find(u=>u.id===currentUser.id);
   if (stored) { stored.name=currentUser.name; stored.email=currentUser.email; stored.bio=currentUser.bio; }
   addActivity('Updated profile');
@@ -937,7 +959,6 @@ function renderHistory() {
 }
 function logout() {
   addActivity('Logged out'); profilePicBase64=null;
-  // Reset to clean unauthenticated state
   currentUser = { id:99, name:'Guest', email:'guest@ucentral.edu', role:'guest', bio:'', password:'guest', officeId:null, profilePic:'G', activityHistory:[] };
   document.getElementById('dashboardPage').classList.add('hidden');
   document.getElementById('authPage').classList.remove('hidden');
@@ -1231,7 +1252,6 @@ document.getElementById('freedomFilterBar').addEventListener('click', e=>{
 });
 document.getElementById('authForm').addEventListener('submit', onAuthSubmit);
 document.getElementById('googleBtn').addEventListener('click', ()=>{
-  // Simulate Google OAuth - create/find user
   const gEmail = 'google@ucentral.edu';
   let gUser = registeredUsers.find(u=>u.email===gEmail);
   if (!gUser) {
@@ -1297,5 +1317,4 @@ document.getElementById('groupCategoryFilter')?.addEventListener('click', e=>{
 // INIT
 // ═══════════════════════════════════════════
 setMode('login');
-// Load data when script starts
 loadPostsFromDB();
