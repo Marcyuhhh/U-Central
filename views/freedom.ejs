@@ -3,15 +3,8 @@
 <%- include('partials/navbar') %>
 
 <div class="dashboard-container">
-  <div class="view-header">Freedom Wall</div>
+  <div class="view-header" style="margin-bottom: 15px;">Freedom Wall</div>
 
-  <!-- GUEST BANNER -->
-  <div id="guestBannerFreedom" class="hidden" onclick="requireAuth('post')" style="display:flex;align-items:center;gap:0.85rem;background:var(--surface);border:1.5px dashed var(--border);border-radius:var(--radius);padding:0.9rem 1.1rem;margin-bottom:1.25rem;cursor:pointer;transition:all var(--transition);" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
-    <div style="width:38px;height:38px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;">🔒</div>
-    <div><div style="font-weight:600;font-size:0.88rem;color:var(--text);">Log in to post</div><div style="font-size:0.78rem;color:var(--text-soft);">Sign in or create an account to share on the Freedom Wall.</div></div>
-  </div>
-
-  <!-- CREATE POST BOX -->
   <div id="freedomCreateBox" class="create-post-box">
     <div class="create-post-header">
       <div class="avatar-sm" id="freedomUserPic">
@@ -27,7 +20,6 @@
     </div>
   </div>
 
-  <!-- FILTER BAR -->
   <div class="filter-bar" id="freedomFilterBar">
     <button class="filter-chip active" data-filter="all">All</button>
     <button class="filter-chip" data-filter="announcement">📢 Announcement</button>
@@ -36,7 +28,6 @@
     <button class="filter-chip" data-filter="maintenance">🔧 Maintenance</button>
   </div>
 
-  <!-- POSTS CONTAINER -->
   <div id="freedomPostsContainer"></div>
 </div>
 
