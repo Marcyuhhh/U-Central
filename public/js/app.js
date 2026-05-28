@@ -1130,26 +1130,25 @@ document.getElementById('profilePicInput')?.addEventListener('change', e=>{
   const file=e.target.files[0]; if(!file) return;
   const r=new FileReader(); r.onload=ev=>{ profilePicBase64=ev.target.result; updateUserUI(); }; r.readAsDataURL(file);
 });
-document.getElementById('homeFilterBar').addEventListener('click', e=>{
+document.getElementById('homeFilterBar')?.addEventListener('click', e=>{
   const c=e.target.closest('.filter-chip'); if(!c) return;
   document.querySelectorAll('#homeFilterBar .filter-chip').forEach(x=>x.classList.remove('active'));
   c.classList.add('active'); homeFilter=c.dataset.filter; renderHomePosts();
 });
-document.getElementById('freedomFilterBar').addEventListener('click', e=>{
+document.getElementById('freedomFilterBar')?.addEventListener('click', e=>{
   const c=e.target.closest('.filter-chip'); if(!c) return;
   document.querySelectorAll('#freedomFilterBar .filter-chip').forEach(x=>x.classList.remove('active'));
   c.classList.add('active'); freedomFilter=c.dataset.filter; renderFreedomPosts();
 });
 ['homeTypeSel','freedomTypeSel'].forEach(selId=>{
-  document.getElementById(selId).addEventListener('click', e=>{
+  document.getElementById(selId)?.addEventListener('click', e=>{
     const b=e.target.closest('.type-badge'); if(!b) return;
     document.querySelectorAll(`#${selId} .type-badge`).forEach(x=>x.classList.remove('selected'));
     b.classList.add('selected');
   });
 });
-document.getElementById('authForm').addEventListener('submit', onAuthSubmit);
-document.getElementById('googleBtn').addEventListener('click', ()=>{
-  // Simulate Google OAuth - create/find user
+document.getElementById('authForm')?.addEventListener('submit', onAuthSubmit);
+document.getElementById('googleBtn')?.addEventListener('click', ()=>{
   const gEmail = 'google@ucentral.edu';
   let gUser = registeredUsers.find(u=>u.email===gEmail);
   if (!gUser) {
@@ -1159,16 +1158,17 @@ document.getElementById('googleBtn').addEventListener('click', ()=>{
   currentUser = { ...gUser, activityHistory: gUser.activityHistory||[] };
   addActivity('Logged in with Google'); showDashboard();
 });
-document.getElementById('openPostModalHomeBtn').addEventListener('click', ()=>openPostModal('home'));
-document.getElementById('openPostModalFreedomBtn').addEventListener('click', ()=>openPostModal('freedom'));
-document.getElementById('cancelPostBtn').addEventListener('click', ()=>closeModal('postModal'));
-document.getElementById('submitPostBtn').addEventListener('click', submitPost);
-document.getElementById('postContentInput').addEventListener('keydown', e=>{ if(e.key==='Enter'&&e.ctrlKey){e.preventDefault();submitPost();} });
-document.getElementById('saveProfileBtn').addEventListener('click', saveProfile);
-document.getElementById('saveStationBtn').addEventListener('click', saveStation);
-document.getElementById('changePasswordBtn').addEventListener('click', changePassword);
-document.getElementById('logoutBtn').addEventListener('click', logout);
-document.getElementById('addOfficeBtn').addEventListener('click', ()=>{
+document.getElementById('openPostModalHomeBtn')?.addEventListener('click', ()=>openPostModal('home'));
+document.getElementById('openPostModalFreedomBtn')?.addEventListener('click', ()=>openPostModal('freedom'));
+document.getElementById('cancelPostBtn')?.addEventListener('click', ()=>closeModal('postModal'));
+document.getElementById('submitPostBtn')?.addEventListener('click', submitPost);
+document.getElementById('postContentInput')?.addEventListener('keydown', e=>{ if(e.key==='Enter'&&e.ctrlKey){e.preventDefault();submitPost();} });
+document.getElementById('saveProfileBtn')?.addEventListener('click', saveProfile);
+document.getElementById('saveStationBtn')?.addEventListener('click', saveStation);
+document.getElementById('changePasswordBtn')?.addEventListener('click', changePassword);
+// The logout button usually handles its own routing via href, but we'll protect this just in case
+document.getElementById('logoutBtn')?.addEventListener('click', logout);
+document.getElementById('addOfficeBtn')?.addEventListener('click', ()=>{
   if (!requireAuth('add office')) return;
   if (currentUser.role !== 'faculty') { showToast('❌ Only faculty can add offices'); return; }
   document.getElementById('newOfficeName').value='';
@@ -1177,17 +1177,21 @@ document.getElementById('addOfficeBtn').addEventListener('click', ()=>{
   document.getElementById('addOfficeModal').classList.remove('hidden');
   setTimeout(()=>document.getElementById('newOfficeName').focus(),50);
 });
-document.getElementById('userMenuBtn').addEventListener('click', e=>{
-  e.stopPropagation(); document.getElementById('userDropdown').classList.toggle('hidden');
+
+// This is the specific fix for your Navbar Dropdown
+document.getElementById('userMenuBtn')?.addEventListener('click', e=>{
+  e.stopPropagation(); 
+  document.getElementById('userDropdown')?.classList.toggle('hidden');
 });
 document.addEventListener('click', ()=>document.getElementById('userDropdown')?.classList.add('hidden'));
+
 document.querySelectorAll('[data-view]').forEach(n=>n.addEventListener('click',()=>showView(n.dataset.view)));
 document.querySelectorAll('[data-setting]').forEach(l=>l.addEventListener('click', e=>{
   e.preventDefault(); showView('settings'); switchTab(l.dataset.setting);
   document.getElementById('userDropdown')?.classList.add('hidden');
 }));
 document.querySelectorAll('.settings-tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
-document.getElementById('officeSearchInput').addEventListener('input', e=>renderOffices(e.target.value));
+document.getElementById('officeSearchInput')?.addEventListener('input', e=>renderOffices(e.target.value));
 
 // Groups
 document.getElementById('createGroupBtn')?.addEventListener('click', () => {
@@ -1214,4 +1218,5 @@ document.getElementById('groupCategoryFilter')?.addEventListener('click', e=>{
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
+// setMode('login'); // You may want to comment this out if you're no longer using the SPA auth view.
 setMode('login');
