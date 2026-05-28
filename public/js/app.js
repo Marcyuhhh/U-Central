@@ -54,6 +54,40 @@ setInterval(() => {
 // ═══════════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════════
+// Fetch posts from PostgreSQL
+async function loadPostsFromDB() {
+    try {
+        const response = await fetch('/api/posts');
+        const dbPosts = await response.json();
+        
+        // Format the database rows to match our frontend UI
+        const formattedPosts = dbPosts.map(p => ({
+            id: p.id,
+            author: p.author,
+            authorRole: p.author_role.charAt(0).toUpperCase() + p.author_role.slice(1),
+            authorPic: p.author.charAt(0).toUpperCase(),
+            time: new Date(p.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
+            content: p.body,
+            type: p.post_subtype,
+            likes: p.likes || 0,
+            liked: false, // We will wire up personal likes later
+            comments: [], // We will wire up comments later
+            target: p.post_type
+        }));
+
+        // Split them into the correct tabs
+        homePosts = formattedPosts.filter(p => p.target === 'home');
+        freedomPosts = formattedPosts.filter(p => p.target === 'freedom');
+        
+        // Update the screen
+        renderHomePosts();
+        renderFreedomPosts();
+
+    } catch (err) {
+        console.error("Error loading posts from database:", err);
+    }
+}
+
 function escapeHtml(s) {
   if (!s) return '';
   return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -657,18 +691,47 @@ function openPostModal(target) {
   document.getElementById('postModal').classList.remove('hidden');
   setTimeout(()=>document.getElementById('postContentInput').focus(),50);
 }
-function submitPost() {
+async function submitPost() {
   const content = document.getElementById('postContentInput').value.trim();
   const type = document.getElementById('postTypeSelect').value;
+  
   if (!content) { showToast('⚠️ Write something first!'); return; }
-  const roleDisplay = {faculty:'Faculty',student:'Student',guest:'Guest'}[currentUser.role]||'Student';
-  // Double check - guest cannot reach here but guard anyway
-  const newPost = { id:Date.now(), author:currentUser.name, authorPic:currentUser.profilePic||currentUser.name.charAt(0), authorRole:roleDisplay, time:'Just now', content, type, likes:0, liked:false, comments:[] };
-  currentPostTarget==='home' ? homePosts.unshift(newPost) : freedomPosts.unshift(newPost);
-  addActivity(`Created a ${type} post`);
-  closeModal('postModal');
-  currentPostTarget==='home' ? renderHomePosts() : renderFreedomPosts();
-  showToast('✅ Posted!');
+
+  // Show loading state
+  const btn = document.getElementById('submitPostBtn');
+  const originalText = btn.innerText;
+  btn.innerText = 'Posting...';
+  btn.disabled = true;
+
+  try {
+    // Send data to our new server API
+    const response = await fetch('/api/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content: content,
+        type: type,
+        target: currentPostTarget // 'home' or 'freedom'
+      })
+    });
+
+    if (response.ok) {
+      showToast('✅ Posted!');
+      closeModal('postModal');
+      document.getElementById('postContentInput').value = '';
+      
+      // Reload posts from the database to show the new one!
+      await loadPostsFromDB(); 
+    } else {
+      showToast('❌ Error saving post.');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('❌ Network error.');
+  } finally {
+    btn.innerText = originalText;
+    btn.disabled = false;
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1221,3 +1284,5 @@ document.getElementById('groupCategoryFilter')?.addEventListener('click', e=>{
 // INIT
 // ═══════════════════════════════════════════
 setMode('login');
+// Load data when script starts
+loadPostsFromDB();

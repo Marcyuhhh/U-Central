@@ -265,6 +265,50 @@ app.post('/login', async (req, res) => {
     }
 });
 
+
+// ═══════════════════════════════════════════
+// API ROUTES (For Frontend JavaScript)
+// ═══════════════════════════════════════════
+
+// 1. GET ALL POSTS
+app.get('/api/posts', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT p.*, u.full_name as author, u.role as author_role 
+            FROM posts p 
+            JOIN users u ON p.user_id = u.id 
+            ORDER BY p.created_at DESC
+        `);
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Fetch posts error:", err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// 2. CREATE A NEW POST
+app.post('/api/posts', requireLogin, async (req, res) => {
+    try {
+        const { content, type, target } = req.body;
+        
+        if (!content || !content.trim()) {
+            return res.status(400).json({ error: 'Content is required' });
+        }
+
+        // Insert into database
+        await pool.query(
+            `INSERT INTO posts (user_id, post_type, post_subtype, body, created_at)
+             VALUES ($1, $2, $3, $4, NOW())`,
+            [req.session.user.id, target, type, content.trim()]
+        );
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Save post error:", err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 // =============================================================
 // API — HOME FEED POSTS
 // =============================================================
