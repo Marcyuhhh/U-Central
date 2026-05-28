@@ -1,0 +1,52 @@
+<%- include('partials/head') %>
+<%- include('partials/sidebar') %>
+<%- include('partials/navbar') %>
+
+<div class="dashboard-container">
+  <div class="view-header">Settings</div>
+  <div class="settings-panel">
+    <div class="settings-tabs">
+      <div class="settings-tab active" data-tab="profile">Profile</div>
+      <% if (user && user.role === 'faculty') { %>
+      <div class="settings-tab" data-tab="station" id="stationTab">Station</div>
+      <% } %>
+      <div class="settings-tab" data-tab="password">Password</div>
+      <div class="settings-tab" data-tab="history">History</div>
+    </div>
+    
+    <div id="profileSettings">
+      <div class="profile-pic-upload">
+        <div class="profile-pic-large" id="profilePicPreview"><%= user ? user.full_name.charAt(0).toUpperCase() : 'U' %></div>
+        <input type="file" id="profilePicInput" accept="image/*" style="display:none">
+        <button class="btn-secondary" onclick="document.getElementById('profilePicInput').click()"><i class="fas fa-camera"></i> Upload Photo</button>
+      </div>
+      <div class="form-group"><label>Full Name</label><input type="text" id="profileName" value="<%= user ? user.full_name : '' %>"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="profileEmail" readonly value="<%= user ? user.email : '' %>" style="opacity:0.7;"></div>
+      <div class="form-group"><label>Bio</label><textarea id="profileBio" rows="2"></textarea></div>
+      <button class="save-btn" id="saveProfileBtn">Save Changes</button>
+      <div id="profileSuccess" class="success-msg hidden" style="margin-top:0.75rem;">✅ Profile saved!</div>
+    </div>
+
+    <% if (user && user.role === 'faculty') { %>
+    <div id="stationSettings" class="hidden">
+      <div class="form-group"><label>Assigned Office (Instructors only)</label><select id="stationSelect"></select></div>
+      <button class="save-btn" id="saveStationBtn">Update Station</button>
+      <div id="stationSuccess" class="success-msg hidden" style="margin-top:0.75rem;">✅ Station updated!</div>
+    </div>
+    <% } %>
+
+    <div id="passwordSettings" class="hidden">
+      <div class="form-group"><label>Current Password</label><input type="password" id="currentPassword"></div>
+      <div class="form-group"><label>New Password</label><input type="password" id="newPassword"></div>
+      <div class="form-group"><label>Confirm New Password</label><input type="password" id="confirmPassword"></div>
+      <button class="save-btn" id="changePasswordBtn">Update Password</button>
+      <div id="passwordSuccess" class="success-msg hidden" style="margin-top:0.75rem;">✅ Password changed!</div>
+    </div>
+
+    <div id="historySettings" class="hidden">
+      <ul class="history-list" id="historyList"></ul>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

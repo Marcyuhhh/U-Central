@@ -1,0 +1,35 @@
+<%- include('partials/head') %>
+<%- include('partials/sidebar') %>
+<%- include('partials/navbar') %>
+
+<div class="dashboard-container">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem;">
+    <div>
+      <div class="view-header" style="margin-bottom:0.2rem;">Groups &amp; Organizations</div>
+      <p style="font-size:0.83rem;color:var(--text-soft);">Join student orgs, clubs, and campus groups</p>
+    </div>
+    <% if (user && user.role !== 'Guest') { %>
+    <button class="btn-primary" id="createGroupBtn" style="width:auto;padding:0.6rem 1.2rem;margin:0;font-size:0.85rem;">
+      <i class="fas fa-plus"></i> Create Group
+    </button>
+    <% } %>
+  </div>
+
+  <div class="search-wrapper">
+    <i class="fas fa-search search-icon"></i>
+    <input type="text" id="groupSearchInput" class="search-input" placeholder="Search groups…">
+  </div>
+
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;" id="groupCategoryFilter">
+    <button class="filter-chip active" data-cat="all">All</button>
+    <button class="filter-chip" data-cat="Student Organization">Orgs</button>
+    <button class="filter-chip" data-cat="Academic Club">Academic</button>
+    <button class="filter-chip" data-cat="Sports">Sports</button>
+    <button class="filter-chip" data-cat="Arts & Culture">Arts</button>
+    <button class="filter-chip" data-cat="Tech & Innovation">Tech</button>
+  </div>
+
+  <div id="groupsGrid" style="display:flex;flex-direction:column;gap:0.75rem;"></div>
+</div>
+
+<%- include('partials/footer') %>

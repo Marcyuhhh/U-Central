@@ -157,6 +157,18 @@ app.get('/freedom', async (req, res) => {
     }
 });
 
+app.get('/groups', (req, res) => {
+    res.render('groups', { user: req.session.user || null });
+});
+
+app.get('/about', (req, res) => {
+    res.render('about', { user: req.session.user || null });
+});
+
+app.get('/settings', requireLogin, (req, res) => {
+    res.render('settings', { user: req.session.user });
+});
+
 app.post('/freedom', requireLogin, async (req, res) => {
     // Prevent guest users from posting
     if (req.session.user.role === 'guest') {
