@@ -157,6 +157,36 @@ app.get('/freedom', async (req, res) => {
     }
 });
 
+app.post('/freedom', requireLogin, async (req, res) => {
+    // Prevent guest users from posting
+    if (req.session.user.role === 'guest') {
+        return res.status(403).send("Guests cannot post.");
+    }
+
+    try {
+        const { title, flair, body } = req.body;
+
+        // Ensure the post has content
+        if (!body || !body.trim()) {
+            return res.redirect('/freedom');
+        }
+
+        // Insert the new post into the PostgreSQL database
+        await pool.query(
+            `INSERT INTO posts (user_id, post_type, post_subtype, title, body, flair, created_at)
+             VALUES ($1, 'freedom', 'announcement', $2, $3, $4, NOW())`,
+            [req.session.user.id, title?.trim() || null, body.trim(), flair || null]
+        );
+
+        // Refresh the page so the newly saved post appears
+        res.redirect('/freedom');
+
+    } catch (err) {
+        console.error('Error saving freedom post:', err);
+        res.redirect('/freedom');
+    }
+});
+
 // =============================================================
 // AUTH ROUTES
 // =============================================================
