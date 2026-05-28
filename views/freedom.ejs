@@ -1,77 +1,43 @@
 <%- include('partials/head') %>
 <%- include('partials/sidebar') %>
 <%- include('partials/navbar') %>
-<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-<div class="view-content" style="padding: 20px;">
-  <div class="view-header" style="font-size: 1.5rem; font-weight: bold; margin-bottom: 15px;">Freedom Wall</div>
 
-  <% if (user && user.role !== 'Guest') { %>
-    <div class="create-post-box" style="background-color: white; padding: 20px; border-radius: 8px; border-left: 5px solid #2028B6;">
-      <form action="/freedom" method="POST" id="freedomPostForm" style="display: flex; flex-direction: column; gap: 15px;">
-        <input type="text" name="title" placeholder="Title*" required style="padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 1.1rem; font-weight: bold;">
-        <select name="flair" style="padding: 10px; border: 1px solid #ccc; border-radius: 20px; width: fit-content; background: white; cursor: pointer;">
-          <option value="">Add flair (optional)</option>
-          <option value="Discussion">Discussion</option>
-          <option value="Announcement">Announcement</option>
-          <option value="Event">Event</option>
-          <option value="Question">Question</option>
-        </select>
-        <div style="background: white">
-          <div id="editor-container" style="height: 200px; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px;"></div>
-        </div>
-        <input type="hidden" name="body" id="hiddenBody">
-        <button type="submit" style="background-color: #2028B6; color: white; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; align-self: flex-end;">
-          Post
-        </button>
-      </form>
-    </div>
-  <% } %>
+<div class="dashboard-container">
+  <div class="view-header">Freedom Wall</div>
 
-  <div id="freedomPostsContainer" style="display: flex; flex-direction: column; gap: 15px;">
-    <% if (posts && posts.length > 0) { %>
-      <% posts.forEach(post => { %>
-        <div style="background: white; padding: 15px; border: 1px solid #e0e0e0; border-radius: 6px;">
-          <div style="margin-bottom: 8px; font-size: 0.9rem;">
-            <strong style="color: #2028B6;"><%= post.full_name %></strong>
-            <span style="background: #eef0fc; padding: 2px 6px; border-radius: 4px; margin-left: 5px;"><%= post.role %></span>
-          </div>
-          <% if (post.flair) { %>
-            <span style="font-size: 0.8rem; background: #ddd; padding: 2px 6px; border-radius: 4px;"><%= post.flair %></span>
-          <% } %>
-          <div class="post-body-content"><%- post.body %></div>
-          <small style="color: #999;"><%= new Date(post.created_at).toLocaleString() %></small>        
-        </div>
-      <% }) %>
-    <% } else { %>
-      <p style="color: #666;">Wow...it's quiet around here...</p>
-    <% } %>
+  <!-- GUEST BANNER -->
+  <div id="guestBannerFreedom" class="hidden" onclick="requireAuth('post')" style="display:flex;align-items:center;gap:0.85rem;background:var(--surface);border:1.5px dashed var(--border);border-radius:var(--radius);padding:0.9rem 1.1rem;margin-bottom:1.25rem;cursor:pointer;transition:all var(--transition);" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+    <div style="width:38px;height:38px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;">🔒</div>
+    <div><div style="font-weight:600;font-size:0.88rem;color:var(--text);">Log in to post</div><div style="font-size:0.78rem;color:var(--text-soft);">Sign in or create an account to share on the Freedom Wall.</div></div>
   </div>
+
+  <!-- CREATE POST BOX -->
+  <div id="freedomCreateBox" class="create-post-box">
+    <div class="create-post-header">
+      <div class="avatar-sm" id="freedomUserPic">
+        <%= user ? user.full_name.charAt(0).toUpperCase() : 'G' %>
+      </div>
+      <button class="post-input-btn" id="openPostModalFreedomBtn">Share something with the community…</button>
+    </div>
+    <div class="type-selector" id="freedomTypeSel">
+      <button class="type-badge selected" data-type="announcement">📢 Announcement</button>
+      <button class="type-badge" data-type="event">🎉 Event</button>
+      <button class="type-badge" data-type="update">📝 Update</button>
+      <button class="type-badge" data-type="maintenance">🔧 Maintenance</button>
+    </div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar" id="freedomFilterBar">
+    <button class="filter-chip active" data-filter="all">All</button>
+    <button class="filter-chip" data-filter="announcement">📢 Announcement</button>
+    <button class="filter-chip" data-filter="event">🎉 Event</button>
+    <button class="filter-chip" data-filter="update">📝 Update</button>
+    <button class="filter-chip" data-filter="maintenance">🔧 Maintenance</button>
+  </div>
+
+  <!-- POSTS CONTAINER -->
+  <div id="freedomPostsContainer"></div>
 </div>
 
 <%- include('partials/footer') %>
-<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-<script>
-  var quill = new Quill('#editor-container', {
-    theme: 'snow',
-    placeholder: 'Body text (optional)...',
-    modules: {
-      toolbar: [
-        ['bold', 'italic', 'strike'],           
-        ['link', 'image', 'video'],             
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }], 
-        ['code-block']                          
-      ]
-    }
-  });
-  document.getElementById('freedomPostForm').addEventListener('submit', function(e) {
-    var htmlContent = quill.root.innerHTML;
-    
-    if (quill.getText().trim().length === 0 && !htmlContent.includes('<img')) {
-      e.preventDefault();
-      alert("Body cannot be empty.");
-      return;
-    }
-
-    document.getElementById('hiddenBody').value = htmlContent;
-  });
-</script>

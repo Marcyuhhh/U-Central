@@ -2,30 +2,27 @@
 <%- include('partials/sidebar') %>
 <%- include('partials/navbar') %>
 
-<div class="view-content" style="padding: 20px;">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+<div class="dashboard-container">
+  <div class="offices-header">
     <div>
-      <div class="view-header" style="font-size: 1.5rem; font-weight: bold;">OFFICES</div>
+      <div class="view-header" style="margin-bottom:0.2rem;">Offices</div>
+      <p style="font-size:0.83rem;color:var(--text-soft);">Browse campus offices and their announcements</p>
     </div>
-    <% if (user && user.role === 'Faculty') { %>
-      <button style="background-color: #2028B6; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer;">
-        <i class="fas fa-plus"></i> Add Office
-      </button>
+    
+    <% if (user && user.role === 'faculty') { %>
+    <button class="btn-primary" id="addOfficeBtn" style="width:auto;padding:0.6rem 1.2rem;margin:0;font-size:0.85rem;">
+      <i class="fas fa-plus"></i> Add Office
+    </button>
     <% } %>
   </div>
 
-  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
-    <% if (departments && departments.length > 0) { %>
-      <% departments.forEach(dept => { %>
-        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 20px; background: #fff;">
-          <h3 style="color: #2028B6; margin-top: 0;"><%= dept.name %></h3>
-          <p style="margin-bottom: 0;"><%= dept.description || 'No description provided.' %></p>
-        </div>
-      <% }) %>
-    <% } else { %>
-      <p style="color: #666; grid-column: 1 / -1;">No offices have been added yet.</p>
-    <% } %>
+  <div class="search-wrapper">
+    <i class="fas fa-search search-icon"></i>
+    <input type="text" id="officeSearchInput" class="search-input" placeholder="Search offices…">
   </div>
+
+  <!-- OFFICES GRID -->
+  <div class="offices-grid" id="officesGrid"></div>
 </div>
 
 <%- include('partials/footer') %>

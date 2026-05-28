@@ -2,12 +2,38 @@
 <%- include('partials/sidebar') %>
 <%- include('partials/navbar') %>
 
-<div class="view-content" style="padding: 20px;">
-  <section class="welcome-section">
-    <h1>Welcome back, <%= user ? user.full_name : 'Guest' %>!</h1>
-  </section>
-  <section class="quick-stats" style="margin-top: 20px;">
-  </section>
+<div class="dashboard-container">
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <div id="guestBannerHome" class="hidden" onclick="requireAuth('post')" style="display:flex;align-items:center;gap:0.85rem;background:var(--surface);border:1.5px dashed var(--border);border-radius:var(--radius);padding:0.9rem 1.1rem;margin-bottom:1.25rem;cursor:pointer;transition:all var(--transition);" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+    <div style="width:38px;height:38px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;">🔒</div>
+    <div><div style="font-weight:600;font-size:0.88rem;color:var(--text);">Log in to post</div><div style="font-size:0.78rem;color:var(--text-soft);">Sign in or create an account to share with the campus.</div></div>
+  </div>
+
+  <div id="homeCreateBox" class="create-post-box">
+    <div class="create-post-header">
+      <div class="avatar-sm" id="homeUserPic">
+        <%= user ? user.full_name.charAt(0).toUpperCase() : 'G' %>
+      </div>
+      <button class="post-input-btn" id="openPostModalHomeBtn">What's on your mind?</button>
+    </div>
+    <div class="type-selector" id="homeTypeSel">
+      <button class="type-badge selected" data-type="announcement">📢 Announcement</button>
+      <button class="type-badge" data-type="event">🎉 Event</button>
+      <button class="type-badge" data-type="update">📝 Update</button>
+      <button class="type-badge" data-type="maintenance">🔧 Maintenance</button>
+    </div>
+  </div>
+
+  <div class="filter-bar" id="homeFilterBar">
+    <button class="filter-chip active" data-filter="all">All</button>
+    <button class="filter-chip" data-filter="announcement">📢 Announcement</button>
+    <button class="filter-chip" data-filter="event">🎉 Event</button>
+    <button class="filter-chip" data-filter="update">📝 Update</button>
+    <button class="filter-chip" data-filter="maintenance">🔧 Maintenance</button>
+  </div>
+
+  <div id="postsFeed"></div>
 </div>
 
 <%- include('partials/footer') %>
