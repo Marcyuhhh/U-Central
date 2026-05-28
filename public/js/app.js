@@ -37,6 +37,19 @@ let pollsData = [];
 let nextPollId = 1;
 
 let currentUser = { id:99, name:"Guest", email:"guest@ucentral.edu", role:"guest", bio:"", password:"guest", officeId:null, profilePic:"G", activityHistory:[] };
+// SYNC CURRENT USER WITH SERVER DATA
+if (typeof window.SERVER_USER !== 'undefined' && window.SERVER_USER !== null) {
+  currentUser = {
+    id: window.SERVER_USER.id,
+    name: window.SERVER_USER.full_name,
+    email: window.SERVER_USER.email || '',
+    role: window.SERVER_USER.role ? window.SERVER_USER.role.toLowerCase() : 'student',
+    bio: window.SERVER_USER.bio || '',
+    officeId: window.SERVER_USER.department_id || null,
+    profilePic: window.SERVER_USER.full_name.charAt(0).toUpperCase(),
+    activityHistory: []
+  };
+}
 let currentMode = 'login';
 let homeFilter = 'all', freedomFilter = 'all';
 let statsStates = { events:true, notifications:true, polls:true };

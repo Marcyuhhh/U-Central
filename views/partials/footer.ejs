@@ -1,5 +1,9 @@
 </main>
-  </div> </div> <div id="postModal" class="modal-overlay hidden">
+  </div> </div> <script>
+  window.SERVER_USER = window.SERVER_USER = JSON.parse('<%- JSON.stringify(typeof user !== "undefined" ? user : null) %>');
+</script>
+
+<div id="postModal" class="modal-overlay hidden">
   <div class="modal-content">
     <div class="modal-title" id="modalTitle">Create Post</div>
     <select id="postTypeSelect">
@@ -10,7 +14,7 @@
     </select>
     <textarea id="postContentInput" rows="4" placeholder="What's on your mind?"></textarea>
     <div class="modal-buttons">
-      <button class="cancel-btn" id="cancelPostBtn">Cancel</button>
+      <button class="cancel-btn" onclick="closeModal('postModal')">Cancel</button>
       <button class="btn-primary" id="submitPostBtn" style="margin:0;width:auto;padding:0.6rem 1.4rem;">Post</button>
     </div>
   </div>
@@ -83,6 +87,35 @@
     </div>
     <div class="modal-buttons" style="margin-top:0.75rem;">
       <button class="cancel-btn" onclick="closeModal('shareModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="createGroupModal" class="modal-overlay hidden">
+  <div class="modal-content sm">
+    <div class="modal-title">👥 Create Group / Org</div>
+    <div class="form-group"><label>Group Name</label><input type="text" id="newGroupName" placeholder="e.g. Computer Science Society"></div>
+    <div class="form-group"><label>Category</label><select id="newGroupCategory"><option value="Student Organization">Student Organization</option><option value="Academic Club">Academic Club</option><option value="Sports">Sports</option><option value="Arts & Culture">Arts & Culture</option><option value="Community Service">Community Service</option><option value="Tech & Innovation">Tech & Innovation</option><option value="Other">Other</option></select></div>
+    <div class="form-group"><label>Description</label><textarea id="newGroupDesc" rows="2" placeholder="What is this group about?"></textarea></div>
+    <div class="form-group"><label>Privacy</label><select id="newGroupPrivacy"><option value="public">🌐 Public — anyone can see & join</option><option value="private">🔒 Private — members only</option></select></div>
+    <div class="modal-buttons">
+      <button class="cancel-btn" onclick="closeModal('createGroupModal')">Cancel</button>
+      <button class="btn-primary" onclick="submitCreateGroup()" style="margin:0;width:auto;padding:0.6rem 1.4rem;">Create Group</button>
+    </div>
+  </div>
+</div>
+
+<div id="guestPromptModal" class="modal-overlay hidden">
+  <div class="modal-content sm" style="text-align:center;padding:2rem 1.75rem;">
+    <div style="font-size:2.5rem;margin-bottom:0.75rem;">🔒</div>
+    <div class="modal-title" style="justify-content:center;">Sign in to interact</div>
+    <p style="font-size:0.88rem;color:var(--text-mid);margin-bottom:1.5rem;line-height:1.6;">
+      You're browsing as a guest. Create a free account or log in to like, comment, post, vote, join groups, and more.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:0.6rem;">
+      <a href="/login" class="btn-primary" style="margin:0;text-decoration:none;"><i class="fas fa-sign-in-alt"></i> Log In</a>
+      <a href="/signup" class="btn-secondary" style="width:100%;justify-content:center;display:flex;text-decoration:none;"><i class="fas fa-user-plus"></i> Create Account</a>
+      <button class="cancel-btn" onclick="closeModal('guestPromptModal')" style="width:100%;">Maybe later</button>
     </div>
   </div>
 </div>
